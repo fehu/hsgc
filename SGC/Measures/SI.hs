@@ -48,10 +48,10 @@ instance UnitSystem SI where systemId = SI
 
 -----------------------------------------------------------------------------
 
-data Second    n        = Sec n deriving (Show, Eq, Ord)
-data Kilogramm n        = Kg  n deriving (Show, Eq, Ord)
-data Meter     n        = M   n deriving (Show, Eq, Ord)
-data MeterPerSecond n   = Mps n deriving (Show, Eq, Ord)
+newtype Second    n        = Sec n deriving (Show, Eq, Ord)
+newtype Kilogramm n        = Kg  n deriving (Show, Eq, Ord)
+newtype Meter     n        = M   n deriving (Show, Eq, Ord)
+newtype MeterPerSecond n   = Mps n deriving (Show, Eq, Ord)
 
 -----------------------------------------------------------------------------
 
