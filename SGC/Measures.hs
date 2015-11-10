@@ -29,7 +29,12 @@ module SGC.Measures (
 , UnitSystem(..)
 , AbstractUnit(..)
 , Unit(..)
+
 , ScalarUnit(..)
+, VectorUnit(..)
+
+--, IsVector(..)
+, VectorOps(..)
 
 -- * Units ~ Physical Quantities
 , QualityOf(..)
@@ -37,9 +42,10 @@ module SGC.Measures (
 , UnitFor(..)
 
 -- * Units Operations
-, uMultiply
-, uDivide
-, ResultDim(..)
+, UnitsMultiply (uMultiply)
+--, uMultiply
+--, uDivide
+--, ResultDim(..)
 
 ---- * Measured Values
 --, Measured(..)
@@ -56,13 +62,20 @@ module SGC.Measures (
 
 -----------------------------------------------------------------------------
 
-class (Show q) => PhysicalQuantity q where isScalar :: q -> Bool
-                                           isVector :: q -> Bool
+class (Show q) => PhysicalQuantity q where --isScalar :: q -> Bool
+                                           --isVector :: q -> Bool
 
                                            quantityId :: q
 
-                                           isVector = not . isScalar
-                                           isScalar = not . isVector
+                                           --isVector = not . isScalar
+                                           --isScalar = not . isVector
+
+data QuantityDimensions = Dimensionless
+                        | UScalar
+                        | UVector
+
+type family PhQDim q :: QuantityDimensions
+
 
 data Time     = Time        deriving Show
 data Mass     = Mass        deriving Show
@@ -72,19 +85,27 @@ data AbsSpeed = AbsSpeed    deriving Show
 data Position = Position    deriving Show
 data Speed    = Speed       deriving Show
 
-instance PhysicalQuantity Time      where isScalar _ = True
-                                          quantityId = Time
-instance PhysicalQuantity Mass      where isScalar _ = True
-                                          quantityId = Mass
-instance PhysicalQuantity Distance  where isScalar _ = True
-                                          quantityId = Distance
-instance PhysicalQuantity AbsSpeed  where isScalar _ = True
-                                          quantityId = AbsSpeed
 
-instance PhysicalQuantity Position  where isVector _ = True
-                                          quantityId = Position
-instance PhysicalQuantity Speed     where isVector _ = True
-                                          quantityId = Speed
+
+instance PhysicalQuantity Time      where quantityId = Time
+type instance PhQDim      Time = UScalar
+
+instance PhysicalQuantity Mass      where quantityId = Mass
+type instance PhQDim      Mass = UScalar
+
+instance PhysicalQuantity Distance  where quantityId = Distance
+type instance PhQDim      Distance = UScalar
+
+instance PhysicalQuantity AbsSpeed  where quantityId = AbsSpeed
+type instance PhQDim      AbsSpeed = UScalar
+
+
+
+instance PhysicalQuantity Position  where quantityId = Position
+type instance PhQDim      Position = UVector
+
+instance PhysicalQuantity Speed     where quantityId = Speed
+type instance PhQDim      Speed = UVector
 
 
 -----------------------------------------------------------------------------
@@ -122,19 +143,31 @@ class (Num n, AbstractUnit u) =>
 
         unitQuantity _ = quantityId
 
+
+-- |
 class (Fractional n, Unit u s n) =>
+
     ScalarUnit u s n where
-        scalarUnit :: (UnitFor s q Scalar ~ u) => s -> q -> n -> u n
+
+        scalarUnit :: (UnitFor s q UScalar ~ u) => s -> q -> n -> u n
         scalarUnit _ _ = createUnit
 
+
+--type family IsVector (v :: * -> *) :: Bool
+
+--type family NumVector (v :: *) :: *
+
+-- |
+class (Fractional n, Unit u s (v n), VectorOps v n) => -- IsVector v ~ True,
+
+    VectorUnit u s v n where
+
+        vectorUnit :: (UnitFor s q UVector ~ u) => s -> q -> v n -> u (v n)
+        vectorUnit _ _ = createUnit
 
 -----------------------------------------------------------------------------
 
 class (Show s) => UnitSystem s where systemId :: s
-
-data QuantityDimensions = Dimensionless
-                        | Scalar
-                        | Vector
 
 
 type family QualityOf s (u :: * -> *) :: *
@@ -145,32 +178,52 @@ type family UnitFor s q (dim :: QuantityDimensions) :: * -> *
 
 
 type family ResultDim a b :: QuantityDimensions where
-    ResultDim a b = Scalar
+    ResultDim UScalar UScalar = UScalar
+    ResultDim UVector UScalar = UVector
+    ResultDim UScalar UVector = UVector
+    ResultDim UVector UVector = UVector
 
 
-type UnitOpsConstraints s a b c qa qb qc v n = (
-       Unit a s n, QualityOf s a ~ qa
-     , Unit b s n, QualityOf s b ~ qb
-     , ResultDim qa qb ~ v
-     , UnitFor s qc v ~ c, Unit c s n
+type family ResultType a b :: * where
+    ResultType n     n     = n
+    ResultType (v n) n     = v n
+    ResultType n     (v n) = v n
+
+
+type UnitOpsConstraints s a b c qa qb qc da db dc na nb nc = (
+       Unit a s na, QualityOf s a ~ qa, PhQDim qa ~ da
+     , Unit b s nb, QualityOf s b ~ qb, PhQDim qb ~ db
+     , ResultDim da db ~ dc
+     , ResultType na nb ~ nc
+     , PhQDim qc ~ dc
+     , UnitFor s qc dc ~ c, Unit c s nc
      )
 
 
-uMultiply :: (PhQMult qa qb ~ qc, UnitOpsConstraints s a b c qa qb qc v n) =>
-          s -> a n -> b n -> c n
-uMultiply _ x y = createUnit $ unitValue x * unitValue y
-
-
-uDivide :: (PhQDiv qa qb ~ qc, UnitOpsConstraints s a b c qa qb qc v n) =>
-        s -> a n -> b n -> c n
-uDivide _ x y = createUnit $ unitValue x * unitValue y
+--class UnitsMultiply s na da nb db where -- nc dc
+--    uMultiply :: ( PhQMult qa qb ~ qc
+--                 , UnitOpsConstraints s a b c qa qb qc da db dc na nb nc) =>
+--          s -> a na -> b nb -> c nc
 
 
 
+class UnitsMultiply s na da nb db nc where -- nc dc
+    uMultiply :: ( PhQMult qa qb ~ qc
+                 , UnitOpsConstraints s a b c qa qb qc da db dc na nb nc) =>
+          s -> a na -> b nb -> c nc
 
 
+instance
+    UnitsMultiply s n UScalar n UScalar n where
+        uMultiply _ x y = createUnit $ unitValue x * unitValue y
 
 
+class VectorOps v n where vMultiplyConst' :: v n -> n -> v n
+
+instance (VectorOps v n) =>
+    UnitsMultiply s (v n) UVector n UScalar (v n) where
+        uMultiply _ x y = createUnit $ vMultiplyConst' (unitValue x)
+                                                       (unitValue y)
 
 
 -----------------------------------------------------------------------------
@@ -181,8 +234,17 @@ time s = scalarUnit s Time (10 :: Float)
 dist s = uMultiply s (absSpeed s) (time s)
 
 
+data Vec2 n = Vec2 n n deriving Show
 
+--type instance IsVector Vec2 = True
+instance Num (Vec2 n)
+instance (Fractional n) =>
+    VectorOps Vec2 n where vMultiplyConst' (Vec2 x y) c = Vec2 (c*x) (c*y)
 
+--instance Num (Vec2 n)
+
+speed s = vectorUnit s Speed (Vec2 2.3 5.2 :: Vec2 Float)
+dist2 s = uMultiply s (speed s) (time s)
 
 
 

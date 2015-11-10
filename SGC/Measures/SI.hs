@@ -1,4 +1,9 @@
-{-# LANGUAGE DataKinds, FlexibleInstances, TypeFamilies #-}
+{-# LANGUAGE DataKinds
+           , FlexibleInstances
+           , TypeFamilies
+           , FlexibleContexts
+           , ConstraintKinds
+         #-}
 
 
 --
@@ -53,6 +58,9 @@ data MeterPerSecond n   = Mps n deriving (Show, Eq, Ord)
 
 newtype Vec u n = Vec (u n)
 
+instance (Show (u n)) =>
+    Show (Vec u n) where show (Vec u) = show u
+
 
 instance (AbstractUnit u)               => AbstractUnit (Vec u) where
     unitValue (Vec u) = unitValue u
@@ -74,7 +82,7 @@ instance (Fractional n) => Unit Second SI n where unitSystem _ = SI
 instance (Fractional n) => ScalarUnit Second SI n
 
 type instance QualityOf SI Second = Time
-type instance UnitFor SI Time Scalar = Second
+type instance UnitFor SI Time UScalar = Second
 
 instance AbstractUnit Second where unitValue (Sec x) = x
                                    createUnit = Sec
@@ -85,34 +93,38 @@ instance (Fractional n) => Unit Kilogramm SI n where unitSystem _ = SI
 instance (Fractional n) => ScalarUnit Kilogramm SI n
 
 type instance QualityOf SI Kilogramm = Mass
-type instance UnitFor SI Mass Scalar = Kilogramm
+type instance UnitFor SI Mass UScalar = Kilogramm
 
 instance AbstractUnit Kilogramm where unitValue (Kg x) = x
                                       createUnit = Kg
 
+
+type VectorConstr v n = (VectorOps v n, Num (v n), Fractional n)
+
 -- Meter
 -----------------------------------------------------------------------------
-instance (Fractional n) => Unit Meter SI n where unitSystem _ = SI
-instance (Fractional n) => ScalarUnit Meter SI n
---instance VectorUnit MeterPerSecond
+instance (Num n)            => Unit Meter SI n where unitSystem _ = SI
+instance (Fractional n)     => ScalarUnit Meter SI n
+instance (VectorConstr v n) => VectorUnit (Vec Meter) SI v n
 
 type instance QualityOf SI Meter         = Distance
 type instance QualityOf SI (Vec Meter)   = Position
-type instance UnitFor SI Distance Scalar = Meter
-type instance UnitFor SI Position Vector = Vec Meter
+type instance UnitFor SI Distance UScalar = Meter
+type instance UnitFor SI Position UVector = Vec Meter
 
 instance AbstractUnit Meter where unitValue (M x) = x
                                   createUnit = M
 
 -- MeterPerSecond
 -----------------------------------------------------------------------------
-instance (Fractional n) => Unit MeterPerSecond SI n where unitSystem _ = SI
-instance (Fractional n) => ScalarUnit MeterPerSecond SI n
---instance VectorUnit MeterPerSecond
+instance (Num n)            => Unit MeterPerSecond SI n where unitSystem _ = SI
+instance (Fractional n)     => ScalarUnit MeterPerSecond SI n
+instance (VectorConstr v n) => VectorUnit (Vec MeterPerSecond) SI v n
+
 type instance QualityOf SI MeterPerSecond       = AbsSpeed
 type instance QualityOf SI (Vec MeterPerSecond) = Speed
-type instance UnitFor SI AbsSpeed Scalar = MeterPerSecond
-type instance UnitFor SI Speed    Vector = Vec MeterPerSecond
+type instance UnitFor SI AbsSpeed UScalar = MeterPerSecond
+type instance UnitFor SI Speed    UVector = Vec MeterPerSecond
 instance AbstractUnit MeterPerSecond where unitValue (Mps x) = x
                                            createUnit = Mps
 
