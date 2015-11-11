@@ -1,8 +1,4 @@
-{-# LANGUAGE TypeFamilies
-           , DataKinds
-           , FlexibleInstances
-           , ConstraintKinds
-         #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 --
 --
@@ -17,6 +13,9 @@ module SGC.Measures (
 
 -- * Physical Quantities
   PhysicalQuantity(..)
+, QuantityDimensions(..)
+, PhQDim(..)
+
 , Time(..)
 , Mass(..)
 , Distance(..), Position(..)
@@ -38,7 +37,6 @@ module SGC.Measures (
 
 -- * Units ~ Physical Quantities
 , QualityOf(..)
-, QuantityDimensions(..)
 , UnitFor(..)
 
 -- * Units Operations
@@ -47,8 +45,7 @@ module SGC.Measures (
 --, UnitsMultiply (uMultiply, (~*~))
 --, UnitsDivide   (uDivide,   (~/~))
 
--- * 'WithUnitSystem' Monad
-, WithUnitSystem
+-- * 'DoWith' Monad for 'UnitSystem'
 , withUnitSystem
 
 , mkScalar
@@ -60,7 +57,9 @@ module SGC.Measures (
 
 ) where
 
-import Control.Applicative
+import SGC.Utils
+
+--import Control.Applicative
 
 -----------------------------------------------------------------------------
 
@@ -214,8 +213,8 @@ class UnitsMultiply s na da nb db nc where
 
     (~*~) :: ( PhQMult qa qb ~ qc
              , UnitOpsConstraints s a b c qa qb qc da db dc na nb nc) =>
-          a na -> b nb -> WithUnitSystem s (c nc)
-    (~*~) x y = WithUnitSystem $ \s -> uMultiply s x y
+          a na -> b nb -> DoWith s (c nc)
+    (~*~) x y = DoWith $ \s -> uMultiply s x y
 
 
 
@@ -243,8 +242,8 @@ class UnitsDivide s na da nb db nc where
 
     (~/~) :: ( PhQDiv qa qb ~ qc
                , UnitOpsConstraints s a b c qa qb qc da db dc na nb nc) =>
-          a na -> b nb -> WithUnitSystem s (c nc)
-    (~/~) x y = WithUnitSystem $ \s -> uDivide s x y
+          a na -> b nb -> DoWith s (c nc)
+    (~/~) x y = DoWith $ \s -> uDivide s x y
 
 instance (Fractional n) =>
     UnitsDivide s n UScalar n UScalar n where
@@ -263,70 +262,25 @@ instance (VectorOps v n) =>
 
 -----------------------------------------------------------------------------
 
-mkScalar q n = WithUnitSystem $ \s -> scalarUnit s q n
-mkVector q n = WithUnitSystem $ \s -> vectorUnit s q n
+mkScalar q n = DoWith $ \s -> scalarUnit s q n
+mkVector q n = DoWith $ \s -> vectorUnit s q n
 
 -----------------------------------------------------------------------------
-
-newtype WithUnitSystem s a = WithUnitSystem (s -> a)
-
-instance (UnitSystem s) => Functor (WithUnitSystem s) where
-    fmap f (WithUnitSystem g) = WithUnitSystem $ f . g
-
-instance (UnitSystem s) => Applicative (WithUnitSystem s) where
-    pure = WithUnitSystem . const
-    WithUnitSystem f <*> WithUnitSystem g = WithUnitSystem (\s -> f s $ g s)
-
-instance (UnitSystem s) => Monad (WithUnitSystem s) where
-    return = pure
-    WithUnitSystem g >>= f = WithUnitSystem $ \s ->
-                                let WithUnitSystem f' = f (g s)
-                                in f' s
 
 mapwus2 f x y = do x' <- x
                    y' <- y
                    return $ f x' y'
 
-instance (Num a, UnitSystem s) => Num (WithUnitSystem s a) where
+instance (Num a, UnitSystem s) => Num (DoWith s a) where
     (+) = mapwus2 (+)
     (*) = mapwus2 (*)
     abs = fmap abs
     signum = fmap signum
     negate = fmap negate
-    fromInteger = pure . fromInteger
+    fromInteger = return . fromInteger
 
-withUnitSystem :: (UnitSystem s) => s -> WithUnitSystem s a -> a
-withUnitSystem s (WithUnitSystem g) = g s
+withUnitSystem :: (UnitSystem s) => s -> DoWith s a -> a
+withUnitSystem = doWith
 
 -----------------------------------------------------------------------------
--- TODO: Tests
-
-
-absSpeed s = scalarUnit s AbsSpeed (5 :: Float)
-time s = scalarUnit s Time (10 :: Float)
-dist s = uMultiply s (absSpeed s) (time s)
-
-
-data Vec2 n = Vec2 n n deriving Show
-
---type instance IsVector Vec2 = True
-instance Num (Vec2 n)
-instance (Fractional n) =>
-    VectorOps Vec2 n where vMultiplyConst' (Vec2 x y) c = Vec2 (c*x) (c*y)
-                           vDivideConst'   (Vec2 x y) c = Vec2 (x/c) (y/c)
-
---instance Num (Vec2 n)
-
-speed s = vectorUnit s Speed (Vec2 2.3 5.2 :: Vec2 Float)
-dist2 s = uMultiply s (speed s) (time s)
-
-
-absSpeed' s = uDivide s (dist s) (time s)
-speed' s = uDivide s (dist2 s) (time s)
-
-
-foo s = withUnitSystem s $ do
-          v <- mkVector Speed (Vec2 1 (-1) :: Vec2 Float)
-          t <- mkScalar Time (5 :: Float)
-          v ~*~ t
 

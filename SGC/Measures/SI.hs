@@ -1,9 +1,4 @@
-{-# LANGUAGE DataKinds
-           , FlexibleInstances
-           , TypeFamilies
-           , FlexibleContexts
-           , ConstraintKinds
-         #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, ConstraintKinds #-}
 
 
 --
