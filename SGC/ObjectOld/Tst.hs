@@ -14,13 +14,13 @@
 --
 
 
-module SGC.Object.Tst (
+module SGC.ObjectOld.Tst (
 
 ) where
 
 import SGC.Measures
 import SGC.Measures.SI
-import SGC.Object
+import SGC.ObjectOld
 import SGC.Utils
 
 import Data.Typeable
@@ -34,7 +34,7 @@ import qualified Data.Map.Strict as Map
 
 -----------------------------------------------------------------------------
 
-absSpeed s = scalarUnit s AbsSpeed (5 :: Float)
+absSpeed s = scalarUnit s Speed (5 :: Float)
 time s = scalarUnit s Time (10 :: Float)
 dist s = uMultiply s (absSpeed s) (time s)
 

@@ -1,116 +1,59 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleContexts #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
--- |
+-----------------------------------------------------------------------------
 --
 -- Module      :  SGC.Object
--- Description :  -
+-- Copyright   :
 -- License     :  MIT
 --
+-- Maintainer  :
+-- Stability   :
+-- Portability :
 --
+-- |
 --
---
-
 
 module SGC.Object (
 
-  UniverseConfig(..)
-, withUniverseConfig
+  Object(..)
+, SomeObj(..)
 
-, Object(..)
-, SomeObject(..)
-
-, ObjectForm
-, SomeObjectForm(..)
-
-, ObjectSystem(..)
-, withObjectSystem
-
-
-, MassUnit
-, PositionUnit
+, InCoordinateSystem(..)
+, HasMass(..)
+, HasForm(..)
 
 ) where
 
-
+import SGC.Coordinates
 import SGC.Measures
-import SGC.Utils
+import SGC.Object.Form
 
 import Data.Typeable
 
 -----------------------------------------------------------------------------
 
-class UniverseConfig c where
-    type USystem
-    type UNum
-    type UVec n
-    type UVectorDim
-
-    type ObjectId
-    type SystemId
-
-    uSystem :: DoWith c USystem
-
-withUniverseConfig :: (UniverseConfig c) => c -> DoWith c a -> a
-withUniverseConfig = doWith
-
------------------------------------------------------------------------------
-
-class (Typeable f) => ObjectForm f
-
-data SomeObjectForm = forall f . ObjectForm f => SomeObjForm f
-
------------------------------------------------------------------------------
+class Object a where
+    type Id a :: *
+    objId :: a -> Id a
 
 
-type MassUnit     s = UnitFor s Mass     UScalar
-type PositionUnit s = UnitFor s Position UVector
+data SomeObj = forall a . (Object a, Typeable a) => SomeObj a
+
+--instance (Object a) => Eq a where
 
 
 -----------------------------------------------------------------------------
 
-
-class (UniverseConfig c) =>
-
-    Object a c where
-
-        objId   :: a -> c -> ObjectId
-        objMass :: (MassUnit USystem ~ u) => c -> a -> u UNum
-        objForm :: a -> c -> SomeObjectForm
+class HasMass a usys num where
+    objMass :: (MassUnit usys ~ mass) => a num -> mass num
 
 
-
-data SomeObject c = forall a . (Typeable a, Object a c, Ord a, Show a) => SomeObj c a
-
-instance Show (SomeObject c) where show (SomeObj _ x) = show x
-
-instance Eq (SomeObject c) where
-    SomeObj _ x == SomeObj _ y = case cast x of Just x' -> x' == y
-                                                _       -> False
-
-instance (Ord ObjectId) => Ord (SomeObject c) where
-    SomeObj c x `compare` SomeObj _ y = case cast x of Just x' -> x' `compare` y
-                                                       _       -> objId x c `compare` objId y c
-
-class -- (UniverseConfig c) =>
-
-    ObjectSystem s c where
---        type Conf
-
-        systemId      :: DoWith s SystemId
-        systemObjects :: DoWith s [SomeObject c]
-
-        positionOf    :: (PositionUnit USystem ~ pos) =>
-                       SomeObject c -> DoWith s (Maybe (pos (UVec UNum)))
-
---        newObjSystem  :: (PositionUnit USystem ~ pos) =>
---                       SystemId -> [(SomeObject c, pos (UVec UNum))] -> DoWith c s
+class HasForm a usys num where
+    objForm :: a -> ObjectForm usys num
 
 
-withObjectSystem :: (ObjectSystem s c) => RunDoWith c (RunDoWith s a)
-withObjectSystem = doWith
 
 -----------------------------------------------------------------------------
-
 
 
 

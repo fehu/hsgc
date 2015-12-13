@@ -23,8 +23,15 @@ library
   exposed-modules:     SGC.Measures
                        SGC.Measures.SI
                        SGC.Object
-                       SGC.Object.Tst
+                       SGC.Object.Form
+                       SGC.Coordinates
+                       SGC.Universe
+                       SGC.Universe.Test1
                        SGC.Utils
+
+                       SGC.ObjectOld
+                       SGC.ObjectOld.Tst
+
 --                       Physics
   -- other-modules:
 
