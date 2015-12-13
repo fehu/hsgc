@@ -56,18 +56,18 @@ newtype MeterPerSecond n   = Mps n deriving (Show, Eq, Ord)
 -----------------------------------------------------------------------------
 
 
-newtype Vec u n = Vec (u n)
-
-instance (Show (u n)) =>
-    Show (Vec u n) where show (Vec u) = show u
-
-
-instance (AbstractUnit u)               => AbstractUnit (Vec u) where
-    unitValue (Vec u) = unitValue u
-    createUnit        = Vec . createUnit
-instance (Unit u s n)                   => Unit (Vec u) s n where
-    unitSystem (Vec u) = unitSystem u
---instance (VectorUnit u s n)             => VectorUnit (Vec u) s n
+--newtype Vec u n = Vec (u n)
+--
+--instance (Show (u n)) =>
+--    Show (Vec u n) where show (Vec u) = show u
+--
+--
+--instance (AbstractUnit u)               => AbstractUnit (Vec u) where
+--    unitValue (Vec u) = unitValue u
+--    createUnit        = Vec . createUnit
+--instance (Unit u s n)                   => Unit (Vec u) s n where
+--    unitSystem (Vec u) = unitSystem u
+----instance (VectorUnit u s n)             => VectorUnit (Vec u) s n
 
 
 
@@ -105,12 +105,10 @@ type VectorConstr v n = (VectorOps v n, Num (v n), Fractional n)
 -----------------------------------------------------------------------------
 instance (Num n)            => Unit Meter SI n where unitSystem _ = SI
 instance (Fractional n)     => ScalarUnit Meter SI n
-instance (VectorConstr v n) => VectorUnit (Vec Meter) SI v n
+instance (VectorConstr v n) => VectorUnit Meter SI v n
 
-type instance QualityOf SI Meter         = Distance
-type instance QualityOf SI (Vec Meter)   = Position
-type instance UnitFor SI Distance UScalar = Meter
-type instance UnitFor SI Position UVector = Vec Meter
+type instance QualityOf SI Meter          = Position
+type instance UnitFor SI Position UVector = Meter
 
 instance AbstractUnit Meter where unitValue (M x) = x
                                   createUnit = M
@@ -119,12 +117,11 @@ instance AbstractUnit Meter where unitValue (M x) = x
 -----------------------------------------------------------------------------
 instance (Num n)            => Unit MeterPerSecond SI n where unitSystem _ = SI
 instance (Fractional n)     => ScalarUnit MeterPerSecond SI n
-instance (VectorConstr v n) => VectorUnit (Vec MeterPerSecond) SI v n
+instance (VectorConstr v n) => VectorUnit MeterPerSecond SI v n
 
-type instance QualityOf SI MeterPerSecond       = AbsSpeed
-type instance QualityOf SI (Vec MeterPerSecond) = Speed
-type instance UnitFor SI AbsSpeed UScalar = MeterPerSecond
-type instance UnitFor SI Speed    UVector = Vec MeterPerSecond
+type instance QualityOf SI MeterPerSecond = Speed
+type instance UnitFor SI Speed UVector    = MeterPerSecond
+
 instance AbstractUnit MeterPerSecond where unitValue (Mps x) = x
                                            createUnit = Mps
 
@@ -137,10 +134,10 @@ instance AbstractUnit MeterPerSecond where unitValue (Mps x) = x
 -----------------------------------------------------------------------------
 -- TODO: Tests
 
-absSpeed = scalarUnit SI AbsSpeed (5 :: Float)
+absSpeed = scalarUnit SI (Abs Speed) (5 :: Float)
 time = scalarUnit SI Time (10 :: Float)
 
-dist :: Meter Float
+dist :: (Abs' Meter) Float
 dist = uMultiply SI absSpeed time
 
 

@@ -2,6 +2,7 @@
            , DataKinds
            , FlexibleInstances
            , ConstraintKinds
+--           , ExistentialQuantification
          #-}
 
 --
@@ -17,10 +18,16 @@ module SGC.Measures (
 
 -- * Physical Quantities
   PhysicalQuantity(..)
+
 , Time(..)
 , Mass(..)
-, Distance(..), Position(..)
-, AbsSpeed(..), Speed(..)
+
+, Abs(..)
+
+, Distance, Position(..)
+, AbsSpeed, Speed(..)
+, Acceleration(..)
+, Force(..)
 
 , qMultiply
 , qDivide
@@ -32,6 +39,8 @@ module SGC.Measures (
 
 , ScalarUnit(..)
 , VectorUnit(..)
+
+, Abs'(..)
 
 --, IsVector(..)
 , VectorOps(..)
@@ -60,15 +69,19 @@ module SGC.Measures (
 
 , MassUnit(..)
 , PositionUnit(..)
+, ForceUnit(..)
 
 ) where
 
+import Data.Typeable
 import Control.Applicative
 
 -----------------------------------------------------------------------------
 
 type MassUnit     s = UnitFor s Mass     UScalar
+
 type PositionUnit s = UnitFor s Position UVector
+type ForceUnit    s = UnitFor s Force    UVector
 
 -----------------------------------------------------------------------------
 
@@ -81,7 +94,6 @@ data QuantityDimensions = Dimensionless
 
 type family PhQDim q :: QuantityDimensions
 
-
 -----------------------------------------------------------------------------
 
 class VectorOps v n where vMultiplyConst' :: v n -> n -> v n
@@ -89,17 +101,46 @@ class VectorOps v n where vMultiplyConst' :: v n -> n -> v n
 
 -----------------------------------------------------------------------------
 
+data Time     = Time        deriving (Show, Read)
+data Mass     = Mass        deriving (Show, Read)
 
-data Time     = Time        deriving Show
-data Mass     = Mass        deriving Show
-data Distance = Distance    deriving Show
-data AbsSpeed = AbsSpeed    deriving Show
+data Position       = Position     deriving (Show, Read)
+data Speed          = Speed        deriving (Show, Read)
+data Acceleration   = Acceleration deriving (Show, Read)
+data Force          = Force        deriving (Show, Read)
 
-data Position = Position    deriving Show
-data Speed    = Speed       deriving Show
+
+
+type Distance = Abs Position
+type AbsSpeed = Abs Speed
 
 
 -----------------------------------------------------------------------------
+
+newtype (PhysicalQuantity q, PhQDim q ~ UVector) =>
+    Abs q = Abs q deriving (Show, Read)
+
+type instance PhQDim (Abs q) = UScalar
+
+-----------------------------------------------------------------------------
+
+newtype (AbstractUnit u) =>
+    Abs' u n =Abs' (u n)
+
+instance (AbstractUnit u)           => AbstractUnit (Abs' u)
+                                        where unitValue (Abs' u) = unitValue u
+                                              createUnit = Abs' . createUnit
+instance (Num n, Unit u s n)        => Unit (Abs' u) s n
+                                        where unitSystem (Abs' u) = unitSystem u
+instance (Fractional n, Unit u s n) => ScalarUnit (Abs' u) s n
+
+-----------------------------------------------------------------------------
+
+type instance UnitFor s (Abs q) UScalar = Abs' (UnitFor s q UVector)
+type instance QualityOf s (Abs' u)   = Abs (QualityOf s u)
+
+-----------------------------------------------------------------------------
+
 
 
 instance PhysicalQuantity Time      where quantityId = Time
@@ -108,11 +149,6 @@ type instance PhQDim      Time = UScalar
 instance PhysicalQuantity Mass      where quantityId = Mass
 type instance PhQDim      Mass = UScalar
 
-instance PhysicalQuantity Distance  where quantityId = Distance
-type instance PhQDim      Distance = UScalar
-
-instance PhysicalQuantity AbsSpeed  where quantityId = AbsSpeed
-type instance PhQDim      AbsSpeed = UScalar
 
 
 
@@ -120,8 +156,10 @@ instance PhysicalQuantity Position  where quantityId = Position
 type instance PhQDim      Position = UVector
 
 instance PhysicalQuantity Speed     where quantityId = Speed
-type instance PhQDim      Speed = UVector
+type instance PhQDim      Speed    = UVector
 
+instance PhysicalQuantity Force     where quantityId = Force
+type instance PhQDim      Force = UVector
 
 -----------------------------------------------------------------------------
 
@@ -139,13 +177,37 @@ qDivide _ _ = quantityId
 
 
 
+--type instance PhQMult (Abs a) b = Abs (PhQMult a b)
+--type instance PhQMult a (Abs b) = Abs (PhQMult b a)
+
+-- Speed
 type instance PhQDiv Position Time = Speed
 type instance PhQMult Speed Time = Position
 type instance PhQMult Time Speed = Position
 
-type instance PhQDiv Distance Time = AbsSpeed
-type instance PhQMult AbsSpeed Time = Distance
-type instance PhQMult Time AbsSpeed = Distance
+-- Acceleration
+type instance PhQDiv Speed Time = Acceleration
+type instance PhQMult Acceleration Time = Speed
+type instance PhQMult Time Acceleration = Speed
+
+-- Abs for ?*/Time
+type instance PhQMult (Abs a) Time = Abs (PhQMult a Time)
+type instance PhQMult Time (Abs a) = Abs (PhQMult Time a)
+type instance PhQDiv (Abs a) Time  = Abs (PhQDiv a Time)
+
+
+
+-- Force
+type instance PhQMult Acceleration Mass = Force
+type instance PhQMult Mass Acceleration = Force
+type instance PhQDiv Force Mass = Acceleration
+
+-- Abs for ?*/Mass
+type instance PhQMult (Abs a) Mass = Abs (PhQMult a Mass)
+type instance PhQMult Mass (Abs a) = Abs (PhQMult Mass a)
+type instance PhQDiv (Abs a) Mass  = Abs (PhQDiv a Mass)
+
+
 
 -----------------------------------------------------------------------------
 
@@ -177,6 +239,7 @@ class (Fractional n, Unit u s (v n), VectorOps v n) =>
 
         vectorUnit :: (UnitFor s q UVector ~ u) => s -> q -> v n -> u (v n)
         vectorUnit _ _ = createUnit
+
 
 -----------------------------------------------------------------------------
 
@@ -230,7 +293,6 @@ class UnitsMultiply s na da nb db nc where
 instance
     UnitsMultiply s n UScalar n UScalar n where
         uMultiply _ x y = createUnit $ unitValue x * unitValue y
-
 
 instance (VectorOps v n) =>
     UnitsMultiply s (v n) UVector n UScalar (v n) where
@@ -310,7 +372,7 @@ withUnitSystem s (WithUnitSystem g) = g s
 -- TODO: Tests
 
 
-absSpeed s = scalarUnit s AbsSpeed (5 :: Float)
+absSpeed s = scalarUnit s (Abs Speed) (5 :: Float)
 time s = scalarUnit s Time (10 :: Float)
 dist s = uMultiply s (absSpeed s) (time s)
 
