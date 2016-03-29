@@ -1,0 +1,112 @@
+-----------------------------------------------------------------------------
+--
+-- Module      :  SGC2.Intergers
+-- Copyright   :
+-- License     :  MIT
+--
+-- Maintainer  :
+-- Stability   :
+-- Portability :
+--
+-- |
+--
+
+{-# LANGUAGE FlexibleInstances
+           , TypeOperators
+           , UndecidableInstances
+           , GADTs
+           , PolyKinds
+       #-}
+
+module SGC2.Intergers where
+
+import GHC.TypeLits
+import GHC.Exts
+
+-----------------------------------------------------------------------------
+
+
+data TInt = Zero
+          | Succ TInt
+          | Prev TInt
+
+data Int' (i :: TInt) = Int'
+
+-----------------------------------------------------------------------------
+
+type family SuccOf (i :: TInt) :: TInt where
+    SuccOf (Prev i) = i
+    SuccOf i        = Succ i
+
+type family PrevOf (i :: TInt) :: TInt where
+    PrevOf (Succ i) = i
+    PrevOf i        = Prev i
+
+
+iSucc :: Int' i -> Int' (SuccOf i)
+iSucc = const Int'
+
+iPrev :: Int' i -> Int' (PrevOf i)
+iPrev = const Int'
+
+
+-----------------------------------------------------------------------------
+
+class TIntValue (i :: TInt) where intValue :: Int' i -> Int
+
+instance TIntValue Zero where intValue _ = 0
+instance (TIntValue i) => TIntValue (Succ i) where intValue i = intValue (iPrev i) + 1
+instance (TIntValue i) => TIntValue (Prev i) where intValue i = intValue (iSucc i) - 1
+
+-----------------------------------------------------------------------------
+
+type family Pos (n :: Nat) :: TInt where
+    Pos 0 = Zero
+    Pos i = Succ (Pos (i-1))
+
+type family Neg (n :: Nat) :: TInt where
+    Neg 0 = Zero
+    Neg i = Prev (Neg (i-1))
+
+
+type family (+) (a :: TInt) (b :: TInt) :: TInt where
+    Zero      SGC2.Intergers.+ b = b
+    (Succ a') SGC2.Intergers.+ b = SuccOf (a' SGC2.Intergers.+ b)
+    (Prev a') SGC2.Intergers.+ b = PrevOf (a' SGC2.Intergers.+ b)
+
+
+
+-----------------------------------------------------------------------------
+
+--data TInts (il :: [TInt]) where
+--    IntsNil  :: TInts '[]
+--    IntsCons :: Int' i -> TInts il -> TInts (i ': il)
+
+-----------------------------------------------------------------------------
+
+
+--data IntDependents (a :: TInt -> *) (il :: [TInt]) where
+--    Nil' :: IntDependents a '[]
+--    Cons' :: a i -> IntDependents a il -> IntDependents a (i ': il)
+--
+--
+--data IntDependents' (c :: * -> TInt -> *) (al :: [*]) (il :: [TInt]) where
+--    INil' :: IntDependents' a '[] '[]
+--    ICons' :: c a i -> IntDependents' c al il -> IntDependents' c (a ': al) (i ': il)
+--
+--
+--newtype IntPair a (i :: TInt) = IntPair a
+--unwrapIntPair (IntPair a) = a
+--
+--type IntPaired = IntDependents' IntPair
+--
+--
+--
+--newtype IPar a (i :: TInt) = IPar a
+--type IntPaired' = IntDependents' IPar
+
+-----------------------------------------------------------------------------
+
+
+
+

@@ -26,6 +26,7 @@ module SGC.Measures (
 
 , Distance, Position(..)
 , AbsSpeed, Speed(..)
+, Impulse(..)
 , Acceleration(..)
 , Force(..)
 
@@ -67,9 +68,10 @@ module SGC.Measures (
 , (~/~)
 
 
-, MassUnit(..)
-, PositionUnit(..)
-, ForceUnit(..)
+, MassUnit
+, PositionUnit
+, ForceUnit
+, ImpulseUnit
 
 ) where
 
@@ -82,6 +84,7 @@ type MassUnit     s = UnitFor s Mass     UScalar
 
 type PositionUnit s = UnitFor s Position UVector
 type ForceUnit    s = UnitFor s Force    UVector
+type ImpulseUnit  s = UnitFor s Impulse  UVector
 
 -----------------------------------------------------------------------------
 
@@ -108,7 +111,7 @@ data Position       = Position     deriving (Show, Read)
 data Speed          = Speed        deriving (Show, Read)
 data Acceleration   = Acceleration deriving (Show, Read)
 data Force          = Force        deriving (Show, Read)
-
+data Impulse        = Impulse      deriving (Show, Read)
 
 
 type Distance = Abs Position
@@ -159,7 +162,10 @@ instance PhysicalQuantity Speed     where quantityId = Speed
 type instance PhQDim      Speed    = UVector
 
 instance PhysicalQuantity Force     where quantityId = Force
-type instance PhQDim      Force = UVector
+type instance PhQDim      Force    = UVector
+
+instance PhysicalQuantity Impulse   where quantityId = Impulse
+type instance PhQDim      Impulse  = UVector
 
 -----------------------------------------------------------------------------
 
@@ -201,6 +207,11 @@ type instance PhQDiv (Abs a) Time  = Abs (PhQDiv a Time)
 type instance PhQMult Acceleration Mass = Force
 type instance PhQMult Mass Acceleration = Force
 type instance PhQDiv Force Mass = Acceleration
+
+-- Impulse
+type instance PhQMult Speed Mass = Impulse
+type instance PhQMult Mass Speed = Impulse
+type instance PhQDiv Impulse Mass = Speed
 
 -- Abs for ?*/Mass
 type instance PhQMult (Abs a) Mass = Abs (PhQMult a Mass)
