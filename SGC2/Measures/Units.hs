@@ -66,7 +66,7 @@ data Newton = Newton
 instance Unit Newton where unitName _ = "N"
                            unitInstance = Newton
 instance UnitDecomposition Newton where
-    type UnitStructure Newton = UnitStructure (Kilogramm * Meter / (Second ^ Int' (Pos 2)))
+    type UnitStructure Newton = UnitStructure (Kilogramm * Meter :/ (Second ^ Int' (Pos 2)))
 
 
 
@@ -84,10 +84,10 @@ x = undefined
 --xx :: (Newton !== x) => x -> Int
 --xx = undefined
 
-aa :: Meter / Second
+aa :: Meter :/ Second
 aa = undefined
 
---aa' :: Kilogramm * Meter / (Second ^ Int' (Pos 2)) -- / Second / Second
+--aa' :: Kilogramm :* Meter :/ (Second :^ Int' (Pos 2)) -- / Second / Second
 --aa' = undefined
 
 --xx' = xx aa' -- (Meter :/ Second)
@@ -98,7 +98,7 @@ aa = undefined
 data AA = AA
 instance Unit AA where unitName _ = "A"
                        unitInstance = AA
-instance UnitDecomposition AA where type UnitStructure AA = UnitStructure (Meter * Second)
+instance UnitDecomposition AA where type UnitStructure AA = UnitStructure (Meter :* Second)
 
 
 qq :: (AA !== x) => x -> Int
@@ -115,9 +115,9 @@ qq'' = qq (Meter :* Second)
 
 ww :: ((Meter * Second) !== (Second * Meter)) => x
 ww = undefined
---
---ww' :: ((Meter * Second) !== (Second * Kilogramm)) => x
---ww' = undefined
+
+ww' :: ((Meter * Second) !== (Second * Kilogramm)) => x
+ww' = undefined
 
 
 

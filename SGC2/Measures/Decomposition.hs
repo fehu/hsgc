@@ -12,20 +12,15 @@
 --
 
 
-{-# LANGUAGE ExistentialQuantification
-           , GADTs
-           , TypeOperators
+{-# LANGUAGE TypeOperators
            , UndecidableInstances
-           , Rank2Types
            , PolyKinds
-           , FunctionalDependencies
        #-}
 
 module SGC2.Measures.Decomposition where
 
 import SGC2.Measures.Definitions
 
-import Data.Typeable
 import Data.Type.Equality
 import Data.Type.Bool
 
@@ -89,12 +84,13 @@ type (!==) a b = DecompositionEq' (UnitStructure a) (UnitStructure b) ~ True
 
 -----------------------------------------------------------------------------
 
-instance (Unit a, Unit b) => UnitDecomposition (a * b) where
-    type UnitStructure (a * b) = UnitStructure a  ++ UnitStructure b
-instance (Unit a, Unit b) => UnitDecomposition (a / b) where
-    type UnitStructure (a / b) = UnitStructure a  ++ NegatePowers (UnitStructure b)
---instance (Unit a, AsRational p,  IntValuesForRational (AsRational' p)) => UnitDecomposition (a ^ p)
---    where type UnitStructure' (a ^ p) = UnitStructure' a
+instance (Unit a, Unit b) => UnitDecomposition (a :* b) where
+    type UnitStructure (a :* b) = UnitStructure a  ++ UnitStructure b
+instance (Unit a, Unit b) => UnitDecomposition (a :/ b) where
+    type UnitStructure (a :/ b) = UnitStructure a  ++ NegatePowers (UnitStructure b)
+
+instance (Unit a, KnownRatio p) => UnitDecomposition (a :^ p) -- TODO
+--    where type UnitStructure (a :^ p) = UnitStructure a ++
 
 -----------------------------------------------------------------------------
 

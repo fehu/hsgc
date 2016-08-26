@@ -18,6 +18,7 @@
            , TypeOperators
            , FlexibleContexts
            , UndecidableInstances
+           , FlexibleInstances
        #-}
 
 module SGC2.Measures.Definitions where
@@ -66,21 +67,22 @@ type family UnitFor sys phq :: *
 
 -----------------------------------------------------------------------------
 
-data (Unit a, Unit b)       => a * b = (:*) a b
-data (Unit a, Unit b)       => a / b = (:/) a b
-data (Unit a, AsRational p) => a ^ p = (:^) a p
+data a :* b = (:*) a b
+data a :/ b = (:/) a b
+data a :^ p = (:^) a (Ratio' p)
 
-instance (Unit a, Unit b) => Unit (a * b) where
+instance (Unit a, Unit b) => Unit (a :* b) where
     unitName (a :* b) = unitName a ++ " * " ++ unitName b
     unitInstance = unitInstance :* unitInstance
 
-instance (Unit a, Unit b) => Unit (a / b) where
+instance (Unit a, Unit b) => Unit (a :/ b) where
     unitName (a :/ b) = unitName a ++ " / " ++ unitName b
     unitInstance = unitInstance :/ unitInstance
 
-instance (Unit a, AsRational p, IntValuesForRational (AsRational' p)) => Unit (a ^ p) where
-    unitName (a :^ p) = unitName a ++ "^" ++ show (asRational p)
-    unitInstance = unitInstance :^ asRational'
+instance (Unit a, KnownRatio p) => Unit (a :^ p) where
+    unitName (a :^ p) = unitName a ++ "^" ++ show p
+    unitInstance = unitInstance :^ Ratio'
+
 
 -----------------------------------------------------------------------------
 
