@@ -12,7 +12,8 @@
 --
 
 {-# LANGUAGE UndecidableInstances
-           , TypeOperators -- TODO TMP
+           , PolyKinds
+           , TypeOperators
        #-}
 
 
@@ -22,17 +23,22 @@ module SGC2.Measures.Units where
 import SGC2.Measures.Definitions
 import SGC2.Measures.Decomposition
 
-import TypeNum.Integer
+import TypeNum.Rational
 
 import Data.Type.Equality -- TODO: TMP
 
+-- TODO: Generate
+
 -----------------------------------------------------------------------------
+
+type (#) a (b :: k) = '(a, AsRational b)
+
 
 data Second = Second
 instance Unit Second where unitName _ = "s"
                            unitInstance = Second
 instance UnitDecomposition Second where
-    type UnitStructure Second = '[ '(Second, Pos 1) ]
+    type UnitStructure Second = '[ Second # 1 ]
     type UnitHash Second = 0
 
 
@@ -41,7 +47,7 @@ data Meter = Meter
 instance Unit Meter where unitName _ = "m"
                           unitInstance = Meter
 instance UnitDecomposition Meter where
-    type UnitStructure Meter = '[ '(Meter, Pos 1) ]
+    type UnitStructure Meter = '[ Meter # 1 ]
     type UnitHash Meter = 1
 
 
@@ -49,7 +55,7 @@ data Kilogramm = Kilogramm
 instance Unit Kilogramm where unitName _ = "kg"
                               unitInstance = Kilogramm
 instance UnitDecomposition Kilogramm where
-    type UnitStructure Kilogramm = '[ '(Kilogramm, Pos 1) ]
+    type UnitStructure Kilogramm = '[ Kilogramm # 1 ]
     type UnitHash Kilogramm = 2
 
 
@@ -59,14 +65,14 @@ data MeterPerSecond = MeterPerSecond
 instance Unit MeterPerSecond where unitName _ = "m/s"
                                    unitInstance = MeterPerSecond
 instance UnitDecomposition MeterPerSecond where
-    type UnitStructure MeterPerSecond = '[ '(Meter, Pos 1) , '(Second, Neg 1) ]
+    type UnitStructure MeterPerSecond = '[ Meter # 1, Second # Neg 1 ]
 
 
 data Newton = Newton
 instance Unit Newton where unitName _ = "N"
                            unitInstance = Newton
 instance UnitDecomposition Newton where
-    type UnitStructure Newton = UnitStructure (Kilogramm * Meter :/ (Second ^ Int' (Pos 2)))
+    type UnitStructure Newton = UnitStructure (Kilogramm :* Meter :/ (Second :^ Nat' 2))
 
 
 

@@ -69,7 +69,11 @@ type family UnitFor sys phq :: *
 
 data a :* b = (:*) a b
 data a :/ b = (:/) a b
-data a :^ p = (:^) a (Ratio' p)
+data Pow a p = Pow a (Ratio' p)
+
+type (:^) a p = Pow a (AsRational p)
+
+--data a :^ p = (:^) a (Ratio' (AsRational p))
 
 instance (Unit a, Unit b) => Unit (a :* b) where
     unitName (a :* b) = unitName a ++ " * " ++ unitName b
@@ -79,9 +83,9 @@ instance (Unit a, Unit b) => Unit (a :/ b) where
     unitName (a :/ b) = unitName a ++ " / " ++ unitName b
     unitInstance = unitInstance :/ unitInstance
 
-instance (Unit a, KnownRatio p) => Unit (a :^ p) where
-    unitName (a :^ p) = unitName a ++ "^" ++ show p
-    unitInstance = unitInstance :^ Ratio'
+instance (Unit a, MayRational p, KnownRatio (AsRational p)) => Unit (Pow a p) where
+    unitName (Pow a p) = unitName a ++ "^" ++ show (asRational p)
+    unitInstance = Pow unitInstance Ratio'
 
 
 -----------------------------------------------------------------------------
