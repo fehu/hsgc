@@ -19,27 +19,12 @@ cabal-version:       >=1.10
 
 
 library
-  hs-source-dirs:      .
-  exposed-modules:
---                       SGC.Measures
---                       SGC.Measures.SI
---                       SGC.Object
---                       SGC.Object.Form
---                       SGC.Coordinates
---                       SGC.Universe
---                       SGC.Universe.Test1
---                       SGC.Utils
+  hs-source-dirs: .
+  exposed-modules:     SGC.Object
+                       SGC.Universe
+                       SGC.Interactions
 
---                       SGC.ObjectOld
---                       SGC.ObjectOld.Tst
-
---                       SGC2.Intergers
-                       SGC2.Measures
-                       SGC2.Measures.Definitions
-                       SGC2.Measures.Decomposition
-                       SGC2.Measures.PhysicalQuantities
-                       SGC2.Measures.Units
-                       SGC2.Measures.SI
+                       SGC.Test.Gravity
 
 
 --                       Physics
@@ -47,8 +32,11 @@ library
 
   build-depends:       base >=4.7
                      , containers >= 0.5
-                     , template-haskell >= 2.10 && < 2.11
-                     , TypeNumerics >= 0.2.2.2
+                     , PhysicalQuantities >= 0.2.3.5
+                     , TypeNumerics >= 0.2.4.1
+                    --  , stm == 2.4.4.*
+--                     , template-haskell >= 2.10 && < 2.11
+--                     , TypeNumerics >= 0.2.2.2
 
   default-language:    Haskell2010
   default-extensions:  MultiParamTypeClasses
@@ -60,3 +48,35 @@ library
                        ExistentialQuantification
                        RankNTypes
                        DeriveDataTypeable
+
+executable GravityTest
+  hs-source-dirs:      .
+  main-is:             Test/Gravity/Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , GLUT, OpenGL
+                     , linear == 1.20.*
+  default-language:    Haskell2010
+  other-modules:       Test.Gravity
+                       Test.Gravity.Orbit
+                       Test.Gravity.Render
+                       Test.Gravity.App
+                       Test.Gravity.App.Gravity01
+                       Test.Environment2D
+
+-- test-suite measures
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      .
+--   main-is:             SGC2/Test/Measures.hs
+--
+--   build-depends:       base >=4.7
+--                      , TypeNumerics
+--                      , sgc
+--                      , hspec >= 2.2 && < 2.3
+--                      , template-haskell >= 2.10 && < 2.11
+--                     , containers >= 0.5
+
+  default-extensions:  MultiParamTypeClasses
+                       TypeFamilies
+                       DataKinds
+                       ConstraintKinds

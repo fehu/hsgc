@@ -1,8 +1,3 @@
-{-# LANGUAGE ExistentialQuantification
-           , FlexibleInstances
-           , DeriveDataTypeable
-         #-}
-
 -----------------------------------------------------------------------------
 --
 -- Module      :  SGC.Object
@@ -16,82 +11,72 @@
 -- |
 --
 
-module SGC.Object (
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE Rank2Types #-}
 
-  Object(..)
-, SObject(..)
+module SGC.Object where
 
---, ObjContainer(..)
-, SomeObj(..)
---, PhysicalObj(..)
+import PhyQ
 
-, InCoordinateSystem(..)
-, HasMass(..)
-, HasForm(..)
+import Data.Typeable (Typeable)
 
-, PhysicalObject(..)
-
-) where
-
-import SGC.Coordinates
-import SGC.Measures
-import SGC.Object.Form
-
-import Data.Typeable
+import GHC.Exts (Constraint)
 
 -----------------------------------------------------------------------------
 
-class Object a where
-    type Id a :: *
-    objId :: a -> Id a
+class AnyObject obj where objId :: obj -> String
 
---instance (Object a) => Eq a where
+data SomeObject = forall obj . (Typeable obj, AnyObject obj) => SomeObject obj
 
--- | Object with an assosiated UnitSystem.
-class (Object a) =>
-    SObject a usys num
+data SomeObject' (c :: * -> Constraint) =
+  forall obj . (Typeable obj, AnyObject obj, c obj) =>
+    SomeObject' obj
 
------------------------------------------------------------------------------
-
-data SomeObj usys num = forall a . (SObject a usys num, Typeable a) =>
-     SomeObj a deriving Typeable
-
---data PhysicalObj usys num = forall a . ( HasMass a usys num
---                                       , HasForm a usys num
---                                       , Typeable a)        =>
---     PhysicalObj a deriving Typeable
-
-
---data ObjContainer = forall c . Typeable c => ObjContainer c
-
---class Typeable (c usys num) =>
---    ObjectContainer (c :: * -> * -> *) usys num
---data ObjContainer usys num = forall c . ( ObjectContainer c usys num ) => -- , Typeable (c usys num)
---     ObjContainer (c usys num)
-
---instance (Typeable num, Typeable usys) => ObjectContainer SomeObj     usys num
---instance (Typeable num, Typeable usys) => ObjectContainer PhysicalObj usys num
+fromSomeObject' :: (forall obj . (Typeable obj, AnyObject obj, c obj) => obj -> x)
+                -> SomeObject' c
+                -> x
+fromSomeObject' f (SomeObject' obj) = f obj
 
 -----------------------------------------------------------------------------
 
-class (SObject a usys num) =>
-    HasMass a usys num where
-        objMass :: (MassUnit usys ~ mass) => a -> mass num
+type Measure a v q = a -> Measurable q v
 
+class HasMass v a where
+  objMass :: Measure a v Mass
 
-class (SObject a usys num) =>
-    HasForm a usys num where
-        objForm :: a -> ObjectForm usys num
+class HasPosition sys vec a where
+  objPosition :: sys -> Measure a vec Position
+  objSpeed    :: sys -> Measure a vec Speed
+
+objDistance ::  (HasPosition sys vec a, Ord vec, Num vec) =>
+                sys -> a -> a -> Measurable Position vec
+objDistance sys x y = let px = objPosition sys x
+                          py = objPosition sys y
+                      in py $- px
+
+-----------------------------------------------------------------------------
+
+class (HasPosition sys vec a, HasMass v a) =>
+  MaterialPoint' sys vec v a | vec -> v
+type MaterialPoint sys vec v = SomeObject' (MaterialPoint' sys vec v)
+
+instance HasPosition sys vec (MaterialPoint sys vec v) where
+  objPosition sys = fromSomeObject' $ objPosition sys
+  objSpeed    sys = fromSomeObject' $ objSpeed sys
+
+instance HasMass v (MaterialPoint sys vec v) where
+  objMass = fromSomeObject' objMass
+
+-----------------------------------------------------------------------------
+
+-- class HasPosition sys vec a where
+--   objPosition :: sys -> Measure a vec Position
+--   objSpeed    :: sys -> Measure a vec Speed
 
 
 
 -----------------------------------------------------------------------------
-
-class (HasMass a usys num, HasForm a usys num, InCoordinateSystem a sys usys num) =>
-    PhysicalObject a sys usys num
-
------------------------------------------------------------------------------
-
-
-
-
