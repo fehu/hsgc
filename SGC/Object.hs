@@ -11,72 +11,89 @@
 -- |
 --
 
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
 
-module SGC.Object where
+module SGC.Object (
+
+
+) where
+
+import SGC.Object.Definition as Export
+import SGC.Object.TypeMap
 
 import PhyQ
 
 import Data.Typeable (Typeable)
+import Data.Type.Bool
+import Data.Type.Equality
 
 import GHC.Exts (Constraint)
 
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
-class AnyObject obj where objId :: obj -> String
+data MeasurableKey q v = MeasurableKey
+measurableKey :: q -> MeasurableKey q v
+measurableKey _ = MeasurableKey
 
-data SomeObject = forall obj . (Typeable obj, AnyObject obj) => SomeObject obj
 
-data SomeObject' (c :: * -> Constraint) =
-  forall obj . (Typeable obj, AnyObject obj, c obj) =>
-    SomeObject' obj
 
-fromSomeObject' :: (forall obj . (Typeable obj, AnyObject obj, c obj) => obj -> x)
-                -> SomeObject' c
-                -> x
-fromSomeObject' f (SomeObject' obj) = f obj
+type HasMeasures obj (ms :: [*]) m v = MergeConstraints (ValueForEach obj ms m v)
+data ObjectMeasures   (ms :: [*]) m v =
+  forall cs vs . HasMeasures (Object cs vs) ms m v =>
+    ObjectMeasures (Object cs vs)
+
+withMeasures :: (forall obj . HasMeasures obj ms m v => obj -> r)
+             -> ObjectMeasures ms m v
+             -> r
+withMeasures f (ObjectMeasures obj) = f obj
+
+
+
 
 -----------------------------------------------------------------------------
 
-type Measure a v q = a -> Measurable q v
+instance (Typeable q, Typeable v) =>
+  TypeMapKey (MeasurableKey q v) where
+    type TMValue (MeasurableKey q v) = Measurable q v
 
-class HasMass v a where
-  objMass :: Measure a v Mass
 
-class HasPosition sys vec a where
-  objPosition :: sys -> Measure a vec Position
-  objSpeed    :: sys -> Measure a vec Speed
 
-objDistance ::  (HasPosition sys vec a, Ord vec, Num vec) =>
-                sys -> a -> a -> Measurable Position vec
-objDistance sys x y = let px = objPosition sys x
-                          py = objPosition sys y
-                      in py $- px
 
------------------------------------------------------------------------------
+type family MergeConstraints (cs :: [Constraint]) :: Constraint
+  where  MergeConstraints cs = MergeConstraints' cs ()
 
-class (HasPosition sys vec a, HasMass v a) =>
-  MaterialPoint' sys vec v a | vec -> v
-type MaterialPoint sys vec v = SomeObject' (MaterialPoint' sys vec v)
+type family MergeConstraints' (cs :: [Constraint]) (acc :: Constraint) :: Constraint
+  where MergeConstraints' (c ': cs) acc = (c, acc)
+        MergeConstraints' '[] acc = acc
 
-instance HasPosition sys vec (MaterialPoint sys vec v) where
-  objPosition sys = fromSomeObject' $ objPosition sys
-  objSpeed    sys = fromSomeObject' $ objSpeed sys
-
-instance HasMass v (MaterialPoint sys vec v) where
-  objMass = fromSomeObject' objMass
+type family ValueForEach obj (ms :: [*]) rm v :: [Constraint]
+  where ValueForEach obj (m ': ms) rm v = ObjectValue obj (MeasurableKey m v) rm
+                                        ': ValueForEach obj ms rm v
+        ValueForEach obj '[] rm v = '[]
 
 -----------------------------------------------------------------------------
 
--- class HasPosition sys vec a where
---   objPosition :: sys -> Measure a vec Position
---   objSpeed    :: sys -> Measure a vec Speed
+-- type Measure a m v q = a -> m (Measurable q v)
+--
+-- class HasMass v m a where
+--   objMass :: Measure a m v Mass
+--
+-- instance ( Typeable m, Typeable n, Monad m, TypeMap cs, TypeMap vs
+--          , ObjectValue (Object cs vs) (MeasurableKey Mass n) m
+--           ) =>
+--   HasMass n m (Object cs vs) where
+--     objMass obj = readValue obj (measurableKey Mass)
 
+-----------------------------------------------------------------------------
 
+getMass :: (Typeable v) => ObjectMeasures '[Mass] m v -> m (Measurable Mass v)
+getMass = withMeasures (`readValue` measurableKey Mass)
 
 -----------------------------------------------------------------------------

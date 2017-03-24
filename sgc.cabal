@@ -20,11 +20,14 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs: .
-  exposed-modules:     SGC.Object
-                       SGC.Universe
+  exposed-modules:     SGC.Universe
                        SGC.Interactions
 
                        SGC.Test.Gravity
+
+                       SGC.Object
+                       SGC.Object.TypeMap
+                       SGC.Object.Definition
 
 
 --                       Physics
