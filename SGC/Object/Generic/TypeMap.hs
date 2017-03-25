@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.TypeMap
+-- Module      :  SGC.Object.Generic.TypeMap
 -- Copyright   :
 -- License     :  MIT
 --
@@ -26,8 +26,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+-- {-# LANGUAGE FunctionalDependencies #-}
 
-module SGC.Object.TypeMap (
+module SGC.Object.Generic.TypeMap (
 
   TypeMap(TMap, TMContains, tmFind, tmGet)
 , TypeMapKey(..)
@@ -36,7 +37,7 @@ module SGC.Object.TypeMap (
 , TypeMapChange(TMUpdateResult, TMUpdateFunc, tmUpdate)
 , TMSetValue(..), TMChangeValue(..)
 
-, TypeMapContext(..)
+, TypeMapContext(..), ContextMapKey, ctxMapKey
 
 
 ) where
@@ -161,16 +162,51 @@ instance TypeMapChange' m tk TypeMapGrowth where
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
+-- class (TypeMap tMap) =>
+--   TypeMapContext ctx (tMap :: [*]) val where
+--     tmCtxFind :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk -> Maybe val
+--     tmCtxGet  :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk ->       val
+--
+-- instance (TypeMap tMap) =>
+--   TypeMapContext ctx tMap val where
+--     tmCtxFind _ = tmFind
+--     tmCtxGet  _ = tmGet
+
+-----------------------------------------------------------------------------
+
+-- class (TypeMap tMap) =>
+--   TypeMapContext ctx (tMap :: [*]) where
+--     tmCtxFind :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk -> Maybe val
+--     tmCtxGet  :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk ->       val
+--
+-- instance (TypeMap tMap) =>
+--   TypeMapContext ctx tMap where
+--     tmCtxFind _ = tmFind
+--     tmCtxGet  _ = tmGet
+
+-----------------------------------------------------------------------------
+
 class (TypeMap tMap) =>
-  TypeMapContext ctx (tMap :: [*]) val where
-    tmCtxFind :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk -> Maybe val
-    tmCtxGet  :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk ->       val
+  TypeMapContext ctx (val :: * -> *) (tMap :: [*]) where -- | ctx -> val where
+    tmCtxFind :: (TypeMapKey tk) => ctx -> TMap tMap -> tk -> Maybe (val (TMValue tk))
+    tmCtxGet  :: (TypeMapKey tk) => ctx -> TMap tMap -> tk ->        val (TMValue tk)
 
-instance (TypeMap tMap) =>
-  TypeMapContext ctx tMap cal where
-    tmCtxFind _ = tmFind
-    tmCtxGet  _ = tmGet
+data ContextMapKey (ctx :: *) (val :: * -> *) (k :: *) = ContextMapKey
+  deriving Typeable
+ctxMapKey :: ctx -> k -> ContextMapKey ctx val k
+ctxMapKey _ _ = ContextMapKey
 
+
+instance (Typeable ctx, Typeable val, Typeable k) =>
+  TypeMapKey (ContextMapKey ctx val k) where
+    type TMValue (ContextMapKey ctx val k) = val (TMValue k)
+
+instance (TypeMap tMap, Typeable ctx, Typeable val) =>
+  TypeMapContext ctx val tMap where
+    tmCtxFind ctx m = tmFind m . ctxMapKey ctx
+    tmCtxGet  ctx m = tmGet m  . ctxMapKey ctx
+
+-----------------------------------------------------------------------------
 
 -- data TypeMapContextKey ctx k = TypeMapContextKey
 

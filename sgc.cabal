@@ -26,8 +26,12 @@ library
                        SGC.Test.Gravity
 
                        SGC.Object
-                       SGC.Object.TypeMap
-                       SGC.Object.Definition
+                       SGC.Object.Definitions
+                       SGC.Object.SomeObject
+                       SGC.Object.Generic.TypeMap
+                       SGC.Object.Generic
+                       SGC.Object.Generic.Create
+                       SGC.Object.Generic.Test
 
 
 --                       Physics

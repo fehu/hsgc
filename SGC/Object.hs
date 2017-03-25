@@ -24,8 +24,8 @@ module SGC.Object (
 
 ) where
 
-import SGC.Object.Definition as Export
-import SGC.Object.TypeMap
+import SGC.Object.Generic --  as Export
+import SGC.Object.Generic.TypeMap
 
 import PhyQ
 
@@ -45,14 +45,14 @@ measurableKey _ = MeasurableKey
 
 
 type HasMeasures obj (ms :: [*]) m v = MergeConstraints (ValueForEach obj ms m v)
-data ObjectMeasures   (ms :: [*]) m v =
-  forall cs vs . HasMeasures (Object cs vs) ms m v =>
-    ObjectMeasures (Object cs vs)
-
-withMeasures :: (forall obj . HasMeasures obj ms m v => obj -> r)
-             -> ObjectMeasures ms m v
-             -> r
-withMeasures f (ObjectMeasures obj) = f obj
+-- data ObjectMeasures   (ms :: [*]) m v =
+--   forall cs vs . HasMeasures (Object cs vs) ms m v =>
+--     ObjectMeasures (Object cs vs)
+--
+-- withMeasures :: (forall obj . HasMeasures obj ms m v => obj -> r)
+--              -> ObjectMeasures ms m v
+--              -> r
+-- withMeasures f (ObjectMeasures obj) = f obj
 
 
 
@@ -93,7 +93,7 @@ type family ValueForEach obj (ms :: [*]) rm v :: [Constraint]
 
 -----------------------------------------------------------------------------
 
-getMass :: (Typeable v) => ObjectMeasures '[Mass] m v -> m (Measurable Mass v)
-getMass = withMeasures (`readValue` measurableKey Mass)
+-- getMass :: (Typeable v) => ObjectMeasures '[Mass] m v -> m (Measurable Mass v)
+-- getMass = withMeasures (`readValue` measurableKey Mass)
 
 -----------------------------------------------------------------------------
