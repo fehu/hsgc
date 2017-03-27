@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.SomeObject
+-- Module      :  SGC.Object.Internal.SomeObject
 -- Copyright   :
 -- License     :  MIT
 --
@@ -17,7 +17,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
-module SGC.Object.SomeObject(
+module SGC.Object.Internal.SomeObject(
 
   ObjectValueType(..)
 , ObjectHas, Has
@@ -29,7 +29,7 @@ module SGC.Object.SomeObject(
 
 ) where
 
-import SGC.Object.Definitions
+import SGC.Object.Internal.Definitions
 
 import TypeNum.TypeFunctions ( type (++) )
 

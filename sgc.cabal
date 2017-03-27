@@ -20,12 +20,15 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs: .
-  exposed-modules:     SGC.Object
-                       SGC.Object.Definitions
-                       SGC.Object.SomeObject
-                       SGC.Object.Generic.TypeMap
-                       SGC.Object.Generic
-                       SGC.Object.Generic.Test
+  exposed-modules:
+                       SGC.Object.Internal.Definitions
+                       SGC.Object.Internal.SomeObject
+                       SGC.Object.Internal.TypeMap
+                       SGC.Object.Internal.Generic
+                       SGC.Object.Internal.Test
+
+                       SGC.Object
+                       SGC.Object.Measures
 
                       --  SGC.Universe
                       --  SGC.Interactions

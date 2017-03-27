@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.Generic.Create
+-- Module      :  SGC.Object.Internal.Create
 -- Copyright   :
 -- License     :  MIT
 --
@@ -11,9 +11,9 @@
 -- |
 --
 
-module SGC.Object.Generic.Test where
+module SGC.Object.Internal.Test where
 
-import SGC.Object.Generic
+import SGC.Object.Internal.Generic
 
 import Data.Typeable (Typeable)
 

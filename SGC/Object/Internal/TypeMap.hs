@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.Generic.TypeMap
+-- Module      :  SGC.Object.Internal.TypeMap
 -- Copyright   :
 -- License     :  MIT
 --
@@ -28,7 +28,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 
-module SGC.Object.Generic.TypeMap (
+module SGC.Object.Internal.TypeMap (
 
   TypeMap(TMap, TMContains, tmFind, tmGet)
 , UserTypeMapKey(..)

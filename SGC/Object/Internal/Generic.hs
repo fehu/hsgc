@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.Generic
+-- Module      :  SGC.Object.Internal.Generic
 -- Copyright   :
 -- License     :  MIT
 --
@@ -18,7 +18,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE GADTs #-}
 
-module SGC.Object.Generic (
+module SGC.Object.Internal.Generic (
 
   GenericObject(..), TMVar(..)
 
@@ -29,9 +29,9 @@ module SGC.Object.Generic (
 
 ) where
 
-import SGC.Object.Definitions as Export
-import SGC.Object.SomeObject  as Export
-import SGC.Object.Generic.TypeMap
+import SGC.Object.Internal.Definitions as Export
+import SGC.Object.Internal.SomeObject  as Export
+import SGC.Object.Internal.TypeMap
 
 import Data.Type.Bool
 import Data.Proxy

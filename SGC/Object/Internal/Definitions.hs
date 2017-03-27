@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.Definitions
+-- Module      :  SGC.Object.Internal.Definitions
 -- Copyright   :
 -- License     :  MIT
 --
@@ -14,7 +14,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module SGC.Object.Definitions (
+module SGC.Object.Internal.Definitions (
 
   ObjectKey(..)
 
@@ -27,7 +27,7 @@ module SGC.Object.Definitions (
 
 ) where
 
-import SGC.Object.Generic.TypeMap
+import SGC.Object.Internal.TypeMap
 
 import Data.Proxy
 import Data.Typeable (Typeable)

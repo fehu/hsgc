@@ -24,7 +24,7 @@ module SGC.Object (
 
 ) where
 
-import SGC.Object.Generic as Export
+import SGC.Object.Internal.Generic as Export
 
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
