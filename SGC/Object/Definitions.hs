@@ -16,24 +16,21 @@
 
 module SGC.Object.Definitions (
 
-  HasConst, HasVar
+  ObjectKey(..)
+
+, HasConst, HasVar
 , HasConst', HasVar'
 
 , ObjectConst(..), ObjectVar(..)
--- , TMVar(..)
 
 , ObjectValue(..), HasValue
-
--- * re-export
-
-, TypeMapKey(..), ObjectKey, KeyValue
-
 
 ) where
 
 import SGC.Object.Generic.TypeMap
 
 import Data.Proxy
+import Data.Typeable (Typeable)
 
 -----------------------------------------------------------------------------
 
@@ -45,11 +42,12 @@ type HasVar   obj c = (HasVar'   obj c ~ True)
 
 -----------------------------------------------------------------------------
 
-type ObjectKey k = TypeMapKey k
-type KeyValue k = TMValue k
+class (Typeable k) => ObjectKey k where type KeyValue k :: *
+
+instance (ObjectKey k) => UserTypeMapKey k where
+  type UserKeyValue k = KeyValue k
 
 -----------------------------------------------------------------------------
-
 
 class (ObjectKey c, HasConst obj c) =>
   ObjectConst obj c where
@@ -86,7 +84,7 @@ type family ObjValueT' (hasConst :: Bool) (hasVar :: Bool) :: ObjectValueT
         ObjValueT' False True = ObjectValueVar
 
 
-class (TypeMapKey k, Monad m) =>
+class (ObjectKey k, Monad m) =>
   ObjectValue' obj k m (t :: ObjectValueT) where
     readValue' :: Proxy t -> obj -> k -> m (KeyValue k)
 

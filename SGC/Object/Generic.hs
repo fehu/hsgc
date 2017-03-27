@@ -16,11 +16,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Rank2Types #-}
-
+{-# LANGUAGE GADTs #-}
 
 module SGC.Object.Generic (
 
   GenericObject(..), TMVar(..)
+
+, ObjectValuesList(..), ObjectKV(..)
+, newGenericObject
 
 , module Export
 
@@ -34,6 +37,9 @@ import Data.Type.Bool
 import Data.Proxy
 import Data.Typeable (Typeable)
 
+import TypeNum.TypeFunctions (type (++))
+
+-----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
 data GenericObject base (consts :: [*]) (vars :: [*]) = GenericObject{
@@ -42,12 +48,44 @@ data GenericObject base (consts :: [*]) (vars :: [*]) = GenericObject{
     objVars   :: TMap vars
   }
 
-type KnownGenericObject base m consts vars =
-  ( TypeMapContext ObjectConstsCtx Id consts
-  , TypeMapContext ObjectVarsCtx   m  vars
-   ) =>
-     GenericObject base consts vars
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
+infixl 5 :::
+infixl 6 ::$
+
+newGenericObject :: (ObjectValuesList2TMap consts, ObjectValuesList2TMap vars) =>
+                    base
+                 -> ObjectValuesList ObjectConstant consts
+                 -> ObjectValuesList ObjectVariable vars
+                 -> GenericObject base consts vars
+newGenericObject base cs vs = GenericObject base (tMap cs) undefined
+
+-----------------------------------------------------------------------------
+
+data ObjectValueAccessType = ObjectConstant | ObjectVariable
+
+data ObjectKV k = (::$) k (KeyValue k)
+
+data ObjectValuesList (t :: ObjectValueAccessType) (kl :: [*]) :: * where
+   ObjectVals :: ObjectValuesList ObjectConstant '[]
+   ObjectVars :: ObjectValuesList ObjectVariable '[]
+   (:::) :: ObjectValuesList t kl -> ObjectKV k -> ObjectValuesList t (k ': kl)
+
+-----------------------------------------------------------------------------
+
+class ObjectValuesList2TMap (kl :: [*]) where
+  tMap :: ObjectValuesList t kl -> TMap kl
+
+instance ObjectValuesList2TMap '[] where tMap _ = tmEmpty
+instance ( TMChange ks k ~ TypeMapGrowth, ObjectKey k
+         , TMKeyType k ~ TypeMapKeyUser
+         , ObjectValuesList2TMap ks
+          ) =>
+  ObjectValuesList2TMap (k ': ks) where
+    tMap (t ::: (k ::$ v)) = tmUpdate (tMap t) k (TMSetValue v)
+
+-----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
 type instance HasConst' (GenericObject base consts vars) c = TMContains consts c
@@ -95,8 +133,15 @@ instance ( ObjectKey v, Monad m, Typeable m
     writeVar  k v = withVar'  (`tmVarWrite` v) k
     updateVar k f =  withVar' (`tmVarUpdate` f) k
 
-withVar' :: ( TypeMapKey k, TypeMapContext ObjectVarsCtx m vs, Typeable m ) =>
+withVar' :: ( ObjectKey k, TypeMapContext ObjectVarsCtx m vs, Typeable m ) =>
             (TMVar m (KeyValue k) -> m b) -> k -> GenericObject base cs vs -> m b
 withVar' f k obj = f $ tmCtxGet ObjectVarsCtx (objVars obj) k
+
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+instance (TypeMap cs, TypeMap vs) =>
+  CreateSomeObject (GenericObject base cs vs) base where
+    someObject obj = SomeObject obj objBase
 
 -----------------------------------------------------------------------------

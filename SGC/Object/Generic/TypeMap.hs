@@ -26,12 +26,12 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
--- {-# LANGUAGE FunctionalDependencies #-}
+
 
 module SGC.Object.Generic.TypeMap (
 
   TypeMap(TMap, TMContains, tmFind, tmGet)
-, TypeMapKey(..)
+, UserTypeMapKey(..)
 , tmEmpty
 
 , TypeMapChange(TMUpdateResult, TMUpdateFunc, tmUpdate)
@@ -39,6 +39,9 @@ module SGC.Object.Generic.TypeMap (
 
 , TypeMapContext(..), ContextMapKey, ctxMapKey
 
+-- * Internal
+
+, TMChange(..), TypeMapChangeT(..), TMKeyType(..), TypeMapKeyType(..)
 
 ) where
 
@@ -46,12 +49,12 @@ import Data.Typeable
 import Data.Type.Bool
 import Data.Type.Equality
 
--- import GHC.Exts (Constraint)
 
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
-class TypeMap (tMap :: [*]) where -- (keyClass :: * -> Constraint)
+-- | Maps 'TypeMapKey' types in `tMap` parameter to corresponding 'TMValue's.
+class TypeMap (tMap :: [*]) where
   data TMap tMap :: *
 
   type TMContains tMap tk :: Bool
@@ -162,34 +165,40 @@ instance TypeMapChange' m tk TypeMapGrowth where
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
--- class (TypeMap tMap) =>
---   TypeMapContext ctx (tMap :: [*]) val where
---     tmCtxFind :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk -> Maybe val
---     tmCtxGet  :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk ->       val
---
--- instance (TypeMap tMap) =>
---   TypeMapContext ctx tMap val where
---     tmCtxFind _ = tmFind
---     tmCtxGet  _ = tmGet
+class UniversalTypeMapKey k (kt :: TypeMapKeyType) where
+  type UTMValue k kt :: *
+
+data TypeMapKeyType = TypeMapKeyInternal | TypeMapKeyUser
+
+class                 InternalTypeMapKey k where type IKeyValue k :: *
+class (Typeable k) => UserTypeMapKey     k where type UserKeyValue k :: *
 
 -----------------------------------------------------------------------------
 
--- class (TypeMap tMap) =>
---   TypeMapContext ctx (tMap :: [*]) where
---     tmCtxFind :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk -> Maybe val
---     tmCtxGet  :: (TypeMapKey tk, TMValue tk ~ val) => ctx -> TMap tMap -> tk ->       val
---
--- instance (TypeMap tMap) =>
---   TypeMapContext ctx tMap where
---     tmCtxFind _ = tmFind
---     tmCtxGet  _ = tmGet
 
+instance (InternalTypeMapKey k) => UniversalTypeMapKey k TypeMapKeyInternal where
+  type UTMValue k TypeMapKeyInternal = IKeyValue k
+
+instance (UserTypeMapKey k) => UniversalTypeMapKey k TypeMapKeyUser where
+  type UTMValue k TypeMapKeyUser = UserKeyValue k
+
+-----------------------------------------------------------------------------
+
+type family TMKeyType k :: TypeMapKeyType
+  where TMKeyType (ContextMapKey ctx val k) = TypeMapKeyInternal
+        TMKeyType k                         = TypeMapKeyUser
+
+instance (Typeable k, UniversalTypeMapKey k (TMKeyType k)) => TypeMapKey k where
+  type TMValue k = UTMValue k (TMKeyType k)
+
+
+-----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
 class (TypeMap tMap) =>
   TypeMapContext ctx (val :: * -> *) (tMap :: [*]) where -- | ctx -> val where
-    tmCtxFind :: (TypeMapKey tk) => ctx -> TMap tMap -> tk -> Maybe (val (TMValue tk))
-    tmCtxGet  :: (TypeMapKey tk) => ctx -> TMap tMap -> tk ->        val (TMValue tk)
+    tmCtxFind :: (UserTypeMapKey tk) => ctx -> TMap tMap -> tk -> Maybe (val (UserKeyValue tk))
+    tmCtxGet  :: (UserTypeMapKey tk) => ctx -> TMap tMap -> tk ->        val (UserKeyValue tk)
 
 data ContextMapKey (ctx :: *) (val :: * -> *) (k :: *) = ContextMapKey
   deriving Typeable
@@ -197,19 +206,13 @@ ctxMapKey :: ctx -> k -> ContextMapKey ctx val k
 ctxMapKey _ _ = ContextMapKey
 
 
-instance (Typeable ctx, Typeable val, Typeable k) =>
-  TypeMapKey (ContextMapKey ctx val k) where
-    type TMValue (ContextMapKey ctx val k) = val (TMValue k)
+instance (Typeable ctx, Typeable val, Typeable k, UserTypeMapKey k) =>
+  InternalTypeMapKey (ContextMapKey ctx val k) where
+    type IKeyValue (ContextMapKey ctx val k) = val (UserKeyValue k)
 
 instance (TypeMap tMap, Typeable ctx, Typeable val) =>
   TypeMapContext ctx val tMap where
     tmCtxFind ctx m = tmFind m . ctxMapKey ctx
     tmCtxGet  ctx m = tmGet m  . ctxMapKey ctx
-
------------------------------------------------------------------------------
-
--- data TypeMapContextKey ctx k = TypeMapContextKey
-
--- data TMKV tMap = forall tk . (TypeMapKey tk) => TMKV tk (TMValue tk)
 
 -----------------------------------------------------------------------------
