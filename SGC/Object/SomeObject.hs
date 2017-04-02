@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  SGC.Object.Internal.SomeObject
+-- Module      :  SGC.Object.SomeObject
 -- Copyright   :
 -- License     :  MIT
 --
@@ -16,20 +16,25 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 
-module SGC.Object.Internal.SomeObject(
+module SGC.Object.SomeObject(
 
-  ObjectValueType(..)
-, ObjectHas, Has
+  ObjectValueType(..), Const, Var
+, ObjectHas, Has, NoCtx
 
 , SomeObject(..), HasConstraints
 , CreateSomeObject(..)
 
 , withObjectBase, withObject
 
+-- * Internal
+
+, MergeConstraints, MergeConstraints', ValueForEach
+
 ) where
 
-import SGC.Object.Internal.Definitions
+import SGC.Object.Definitions
 
 import TypeNum.TypeFunctions ( type (++) )
 
@@ -39,11 +44,17 @@ import GHC.Exts (Constraint)
 
 data ObjectValueType = Consts | Vars | Any
 
-type ObjectHas (t :: ObjectValueType) obj (ks :: [*]) m =
+type Const = Consts
+type Var = Vars
+
+type ObjectHas obj m (t :: ObjectValueType) (ks :: [*]) =
                MergeConstraints (ValueForEach t obj ks m)
 
 type Has (t :: ObjectValueType) (ks :: [*]) = '(t, ks)
 
+
+class NoCtx a
+instance NoCtx a
 
 -----------------------------------------------------------------------------
 
