@@ -12,8 +12,8 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ExistentialQuantification #-}
+-- {-# LANGUAGE FunctionalDependencies #-}
 
 module SGC.Universe where
 
@@ -22,61 +22,66 @@ import SGC.Object
 import PhyQ
 import PhyQ.SI
 
-import Data.Typeable (Typeable, gcast)
+import Data.Typeable (Typeable, cast, gcast)
 
 -----------------------------------------------------------------------------
 
-class (Monad m, Num v) =>
-  System sys m vec v | sys -> vec, vec -> v
-    where
-      sysGetObjects     :: sys -> m [SomeObject' (HasPosition sys vec)]
-      sysSetObjects     :: sys -> [SomeObject' (HasPosition sys vec)] -> m ()
-      sysUpdateObjects  :: sys
-                        -> (   [SomeObject' (HasPosition sys vec)]
-                            -> [SomeObject' (HasPosition sys vec)]  )
-                        -> m ()
+class (Monad m) => System sys m
+  where
+    sysGetObjects     :: sys -> m [AnyObject id m]
+    sysSetObjects     :: sys -> [AnyObject id m] -> m ()
+    sysUpdateObjects  :: sys
+                      -> (   [AnyObject id m]
+                          -> [AnyObject id m]  )
+                      -> m ()
 
-      sysUpdateObjects sys f = sysSetObjects sys =<< f <$> sysGetObjects sys
-
+    sysUpdateObjects sys f = sysSetObjects sys =<< f <$> sysGetObjects sys
 
 -----------------------------------------------------------------------------
 
-type AppliedForce usys vec = Measurable Force vec
+type AppliedForce usys vec m = m (Measurable Force vec)
 
-data Interaction usys vec sys obj = Interaction {
-  interaction :: sys -> obj -> obj -> AppliedForce usys vec
+data Interaction usys vec sys id m = Interaction {
+  interaction :: sys -> AnyObject id m -> AnyObject id m -> AppliedForce usys vec m
 }
 
-data Interact usys sys vec = forall obj . Typeable obj =>
-                             Interact (Interaction usys vec sys obj)
-
-interact2 :: (Typeable obj, Num vec, Ord vec) =>
-             [Interact usys sys vec] -> sys -> obj -> obj -> AppliedForce usys vec
-interact2 (Interact f' : is) sys x y =
-  case gcast f' of Just f -> interaction f sys x y  $+ interact2 is sys x y
+interact2 :: (Num vec, Ord vec, Typeable m, Monad m) =>
+             [Interaction usys vec sys id m] -> sys
+          -> AnyObject id m -> AnyObject id m -> AppliedForce usys vec m
+interact2 (f' : is) sys x y = -- undefined
+  case gcast f' of Just f -> ($+) <$> interaction f sys x y
+                                  <*> interact2 is sys x y
                    _      -> interact2 is sys x y
-interact2 [] _ _ _ = Measurable $ const (measure 0)
+interact2 [] _ _ _ = return $ measurable 0
 
 -----------------------------------------------------------------------------
 
 data ApplyForce obj m usys vec v =
-     ApplyForce (obj -> AppliedForce usys vec -> v -> m obj)
+     ApplyForce (obj -> AppliedForce usys vec m -> v -> m obj)
 
 
-objsInteract :: (Monad m, Eq obj, Typeable obj, Num vec, Ord vec) =>
-                ApplyForce obj m usys vec v
-             -> [Interact usys sys vec]
+
+objsInteract :: (Num vec, Ord vec, Monad m, Typeable m, Ord id) =>
+                ApplyForce (AnyObject id m) m usys vec v
+             -> [Interaction usys vec sys id m]
              -> sys
-             -> [obj]
-             -> v
-             -> m [obj]
+             -> [AnyObject id m]
+             -> v -- ^ time
+             -> m [AnyObject id m]
 objsInteract (ApplyForce applyF) is sys objs time = sequence $ do
   x  <- objs
-  let fs = do y <- objs
-              if x == y then []
-                else return $ interact2 is sys x y
-      f = foldr measuresSum (measurable 0) fs
+  let fs = sequence $ do y <- objs
+                         if x == y then []
+                           else return $ interact2 is sys x y
+  let f = foldr measuresSum (measurable 0) <$> fs
   return $ applyF x f time
 
+
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+-- class -- (Monad m) =>
+--   CoortinateSystem sys vec v | sys -> vec, vec -> v -- , Num v
+--     where
 
 -----------------------------------------------------------------------------

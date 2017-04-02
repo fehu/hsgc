@@ -30,7 +30,7 @@
 
 module SGC.Object.Internal.TypeMap (
 
-  TypeMap(TMap, TMContains, tmFind, tmGet)
+  TypeMap(TMap, TMContains, tmContains, tmFind, tmGet)
 , UserTypeMapKey(..)
 , tmEmpty
 
@@ -39,15 +39,23 @@ module SGC.Object.Internal.TypeMap (
 
 , TypeMapContext(..), ContextMapKey, ctxMapKey
 
+, TypeSubMap(..)
+
 -- * Internal
 
 , TMChange(..), TypeMapChangeT(..), TMKeyType(..), TypeMapKeyType(..)
+, TMValue
+, proxyHead, proxyTail
+
 
 ) where
 
 import Data.Typeable
 import Data.Type.Bool
 import Data.Type.Equality
+import Data.Maybe (isJust)
+
+import TypeNum.TypeFunctions (ContainsEach)
 
 
 -----------------------------------------------------------------------------
@@ -58,9 +66,12 @@ class TypeMap (tMap :: [*]) where
   data TMap tMap :: *
 
   type TMContains tMap tk :: Bool
+  tmContains :: (TypeMapKey tk) => TMap tMap -> tk -> Bool
 
   tmFind :: (TypeMapKey tk) => TMap tMap -> tk -> Maybe (TMValue tk)
   tmGet  :: (TypeMapKey tk) => TMap tMap -> tk -> TMValue tk
+
+  tmFindP :: (TypeMapKey tk) => TMap tMap -> Proxy (tk :: *) -> Maybe (tk, TMValue tk)
 
 class (Typeable tk) => TypeMapKey tk where type TMValue tk :: *
 
@@ -73,9 +84,11 @@ instance TypeMap '[] where
   data TMap '[] = TMNil
 
   type TMContains '[] tk = False
+  tmContains TMNil _ = False
 
-  tmGet  TMNil _ = error "`tmGet` from `TMNil`"
-  tmFind TMNil _ = Nothing
+  tmGet   TMNil _ = error "`tmGet` from `TMNil`"
+  tmFind  TMNil _ = Nothing
+  tmFindP TMNil _ = Nothing
 
 
 instance (Typeable k, Eq k, TypeMap ks) =>
@@ -84,16 +97,27 @@ instance (Typeable k, Eq k, TypeMap ks) =>
 
     type TMContains (k ': ks) tk = k == tk || TMContains ks tk
 
+    tmContains (TMCons k v ks) tk = sameKey' k tk || tmContains ks tk
+
     tmFind (TMCons k v ks) tk =
       case k `sameKey` tk of Just Refl -> Just v
                              _         -> tmFind ks tk
     tmGet tm k = case tmFind tm k of Just v -> v
                                      _      -> error "Key not found in TMap"
 
+    tmFindP (TMCons k v ks) k' =
+      case  sameKeyP k' k of Just Refl -> Just (k, v)
+                             _         -> tmFindP ks k'
 
-sameKey :: (Typeable k1, Typeable k2, Eq k1) => k1 -> k2 -> Maybe (k1 :~: k2)
+
+sameKey :: (Typeable k1, Typeable k2) => k1 -> k2 -> Maybe (k1 :~: k2)
 sameKey _ _ = eqT
 
+sameKey' :: (Typeable k1, Typeable k2, Eq k1) => k1 -> k2 -> Bool
+sameKey' = (isJust .) . sameKey
+
+sameKeyP :: (Typeable k1, Typeable k2) => Proxy k1 -> k2 -> Maybe (k1 :~: k2)
+sameKeyP _ _ = eqT
 
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
@@ -185,8 +209,9 @@ instance (UserTypeMapKey k) => UniversalTypeMapKey k TypeMapKeyUser where
 -----------------------------------------------------------------------------
 
 type family TMKeyType k :: TypeMapKeyType
-  where TMKeyType (ContextMapKey ctx val k) = TypeMapKeyInternal
-        TMKeyType k                         = TypeMapKeyUser
+  where TMKeyType (ContextMapKey ctx k) = TypeMapKeyInternal
+        TMKeyType k                     = TypeMapKeyUser
+
 
 instance (Typeable k, UniversalTypeMapKey k (TMKeyType k)) => TypeMapKey k where
   type TMValue k = UTMValue k (TMKeyType k)
@@ -195,24 +220,67 @@ instance (Typeable k, UniversalTypeMapKey k (TMKeyType k)) => TypeMapKey k where
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
-class (TypeMap tMap) =>
-  TypeMapContext ctx (val :: * -> *) (tMap :: [*]) where -- | ctx -> val where
-    tmCtxFind :: (UserTypeMapKey tk) => ctx -> TMap tMap -> tk -> Maybe (val (UserKeyValue tk))
-    tmCtxGet  :: (UserTypeMapKey tk) => ctx -> TMap tMap -> tk ->        val (UserKeyValue tk)
+class (TypeMap tMap, Typeable ctx) =>
+  TypeMapContext ctx (tMap :: [*]) where
+    type CtxKeyValue ctx :: * -> *
+    tmCtxFind :: (UserTypeMapKey tk) => ctx -> TMap tMap -> tk -> Maybe (CtxKeyValue ctx (UserKeyValue tk))
+    tmCtxGet  :: (UserTypeMapKey tk) => ctx -> TMap tMap -> tk ->        CtxKeyValue ctx (UserKeyValue tk)
 
-data ContextMapKey (ctx :: *) (val :: * -> *) (k :: *) = ContextMapKey
-  deriving Typeable
-ctxMapKey :: ctx -> k -> ContextMapKey ctx val k
+    tmCtxFind ctx m = tmFind m . ctxMapKey ctx
+    tmCtxGet  ctx m = tmGet m  . ctxMapKey ctx
+
+data ContextMapKey (ctx :: *) (k :: *) = ContextMapKey
+  deriving (Typeable, Eq)
+ctxMapKey :: ctx -> k -> ContextMapKey ctx k
 ctxMapKey _ _ = ContextMapKey
 
 
-instance (Typeable ctx, Typeable val, Typeable k, UserTypeMapKey k) =>
-  InternalTypeMapKey (ContextMapKey ctx val k) where
-    type IKeyValue (ContextMapKey ctx val k) = val (UserKeyValue k)
+instance (Typeable ctx, Typeable k, UserTypeMapKey k) =>
+  InternalTypeMapKey (ContextMapKey ctx k) where
+    type IKeyValue (ContextMapKey ctx k) = CtxKeyValue ctx (UserKeyValue k)
 
-instance (TypeMap tMap, Typeable ctx, Typeable val) =>
-  TypeMapContext ctx val tMap where
-    tmCtxFind ctx m = tmFind m . ctxMapKey ctx
-    tmCtxGet  ctx m = tmGet m  . ctxMapKey ctx
+-----------------------------------------------------------------------------
+
+
+
+-- class TypeSubMap (sub :: [*]) (mp :: [*]) where
+--   subTMap :: Proxy sub -> TMap mp -> Maybe (TMap sub)
+--
+-- instance TypeSubMap sub '[] where subTMap _ _ = Nothing
+-- instance TypeSubMap '[] mp  where subTMap _ _ = Just tmEmpty
+-- instance ( TypeMap mp, Typeable h, TypeSubMap t mp
+--          , UniversalTypeMapKey h (TMKeyType h)
+--           ) =>
+--   TypeSubMap (h ': t) mp where
+--     subTMap sub mp = case tmFindP mp (proxyHead sub)
+--                       of Just (k, v) -> TMCons k v <$> subTMap (proxyTail sub) mp
+
+proxyHead :: Proxy (h ': t) -> Proxy h
+proxyHead = const Proxy
+
+proxyTail :: Proxy (h ': t) -> Proxy t
+proxyTail = const Proxy
+
+-- class TypeSubMap (mp :: [*]) (sub :: [*]) where
+--   subTMap :: Proxy sub -> TMap mp -> TMap sub
+
+-- instance (ContainsEach mp sub ~ True) => TypeSubMap mp sub where
+--   subTMap _ tmap = undefined
+
+
+-- subTMap' :: Proxy (sub :: [*]) -> TMap (mp :: [*]) -> Maybe (TMap sub)
+-- subTMap' sub mp = case tmFindP mp (proxyHead sub)
+--                   of Just (k, v) -> TMCons k v <$> subTMap' (proxyTail sub) mp
+
+class TypeSubMap (sub :: [*]) where
+  subTMap :: (TypeMap mp) => Proxy sub -> TMap (mp :: [*]) -> Maybe (TMap sub)
+
+instance TypeSubMap '[] where subTMap _ _ = Just tmEmpty
+instance (Typeable h, UniversalTypeMapKey h (TMKeyType h), TypeSubMap t) =>
+  TypeSubMap (h ': t) where
+    subTMap sub mp =
+      case tmFindP mp (proxyHead sub)
+        of Just (k, v) -> TMCons k v <$> subTMap (proxyTail sub) mp
+           _           -> Nothing
 
 -----------------------------------------------------------------------------

@@ -40,7 +40,7 @@ baf = withObjectBase show
 
 -----------------------------------------------------------------------------
 
-obj1 :: GenericObject String '[A] '[]
+obj1 :: GObject String '[A] '[] m
 obj1 = undefined
 
 obj1' :: SomeObject Show m '[]
@@ -54,16 +54,16 @@ obj1''' = someObject obj1
 
 
 
-obj2 :: GenericObject String '[] '[A]
+obj2 :: GObject String '[] '[A] IO
 obj2 = undefined
 
-obj2' :: SomeObject Show m '[]
+obj2' :: SomeObject Show IO '[]
 obj2' = someObject obj2
 
-obj2'' :: (Monad m, Typeable m) => SomeObject Show m '[Has Vars '[A]]
+obj2'' :: SomeObject Show IO '[Has Vars '[A]]
 obj2'' = someObject obj2
 
-obj2''' :: (Monad m, Typeable m) => SomeObject Show m '[Has Any '[A]]
+obj2''' :: SomeObject Show IO '[Has Any '[A]]
 obj2''' = someObject obj2
 
 -----------------------------------------------------------------------------
