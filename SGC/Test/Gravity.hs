@@ -16,7 +16,7 @@ module SGC.Test.Gravity where
 
 import SGC.Interactions
 import SGC.Universe
-import SGC.Object
+import SGC.Object.Measures
 
 import PhyQ
 
